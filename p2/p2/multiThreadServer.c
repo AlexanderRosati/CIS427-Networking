@@ -128,7 +128,7 @@ void* ChildThread(void *newfd)
         
             // if it is a message to store
             if (msg_store)
-            {
+            { 
                 //vars
                 string tempbuf(buf);
                 ofstream write_message("messages.txt", ios_base::app);
@@ -136,8 +136,7 @@ void* ChildThread(void *newfd)
                 write_message.close();
 
                 // Puts new MOTD at next empty cell
-                messages_of_the_day[num_messages] = tempbuf;
-                ++num_messages;
+                messages_of_the_day[num_messages - 1] = tempbuf;
 
                 // show what was stored in array and file
                 cout << "Storing . . .\n\t" << messages_of_the_day[num_messages - 1] << "in file and internal data structure." << endl;
@@ -244,6 +243,9 @@ void* ChildThread(void *newfd)
                 // if user is authorized
                 else 
                 {
+                    // increase number of messages
+                    ++num_messages;
+
                     // create messsage
                     strcpy(buf, "200 OK\n");
 

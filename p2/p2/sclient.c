@@ -43,6 +43,7 @@ int main(int argc, char * argv[]) {
 
     bool quitting = false;
     bool msg_store = false;
+    bool skip_quit = false;
 
     // clear the master and temp sets
     FD_ZERO(&master);    
@@ -124,16 +125,22 @@ int main(int argc, char * argv[]) {
                 else
                 {
                     msg_store = false;
+                    skip_quit = true;
                 }
 
                 //test to see if quitting
-                if (strcmp(buf, "quit\n") == 0)
+                if ((strcmp(buf, "quit\n") == 0) && !skip_quit)
                 {
                     quitting = true;
                 } 
 
+                else
+                {
+                    skip_quit = false;
+                }
+
                 // if message is msgstore
-                else if (strcmp(buf, "msgstore\n") == 0)
+                if (strcmp(buf, "msgstore\n") == 0)
                 {
                     msg_store = true;
                 }
