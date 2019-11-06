@@ -164,7 +164,7 @@ void* ChildThread(void *newfd)
 			{
 				//holds message 
 				string tempbuf(buf);
-
+				int recsock = -1;
 				// OriginalSenderSocket Sender Client Given:: int
 				map<int, string>::iterator itrSender_Socket;
 				// Receiving Client :: Given:: string
@@ -198,20 +198,20 @@ void* ChildThread(void *newfd)
 						{
 							if (UserID == itrReciever_Socket->second)
 							{
-								new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_socket->second + ": " + tempbuf + "\n";
-								strcpy(buf, new_msg.c_str());
-
-								// get message len
-								len = strlen(buf) + 1;
-
-								//send message to client
-								send(itrReciever_Socket->first, buf, len, 0);
+								new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
+								recsock = itrReciever_Socket->first;
 							}
 						}
 					}
 				}
+				strcpy(buf, new_msg.c_str());
 
-				
+				// get message len
+				len = strlen(buf) + 1;
+
+				//send message to client
+				send(itrReciever_Socket->first, buf, len, 0);
+				send_msg = false;
 
 			}
 
@@ -276,7 +276,7 @@ void* ChildThread(void *newfd)
             else if (strcmp(buf, "msgstore\n") == 0)
             {
                 // if user is NOT Logged in
-		if (user_pos == -1) 
+				if (user_pos == -1) 
                 {
                     // create error message
                     strcpy(buf, "401 You are not currently logged in, login first.\n");
@@ -477,8 +477,7 @@ void* ChildThread(void *newfd)
 						
 					}
 				}
-				//adds end line
-				temp = temp + "\n";
+				
 
 				// c.str turns string into character array
 				strcpy(buf, temp.c_str());
@@ -576,9 +575,9 @@ void* ChildThread(void *newfd)
 			// get UserID
 			UserID = converted_buf.substr(
 				pos_first_space + 1,
-				converted_buf.size() - pos_first_space - 2);
+				converted_buf.size() - pos_first_space - 1);
 
-			for (int i = 0; i < 4; ++i)
+			for (int i = 0; i < 10; ++i)
 			{
 				if (user_names[i] == UserID)
 				{
@@ -618,6 +617,7 @@ void* ChildThread(void *newfd)
 				send(childSocket, buf, len, 0);
 
 				send_msg = true;
+				//cout.flush();
 				
 				continue;
 			}
