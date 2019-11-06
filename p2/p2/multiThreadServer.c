@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <map>
+#include <iterator>
 
 using namespace std;
 
@@ -398,10 +399,29 @@ void* ChildThread(void *newfd)
             }
 
             // if message is who
-            else if (strcmp(buf, "who\n") == 0)
-            {
-                
-            }
+			else if (strcmp(buf, "who\n") == 0)
+			{
+				string temp = "200 OK \n The list of the active users: \n";
+				map<int,string>::iterator itr1;
+				map<int,string>::iterator itr2;
+				for (itr1 = client_ids.begin(); itr1 != client_ids.end(); itr1++)
+				{ 
+					for (itr2 = client_ips.begin(); itr2 != client_ips.end(); itr2++) 
+					{
+						temp = temp + itr1->second + "      " + itr2->second + "\n";
+						
+						//cout << temp;
+						
+					}
+				}
+				
+				temp = temp + "\n";
+				strcpy(buf, temp.c_str());
+
+				len = strlen(buf) + 1;
+
+				send(childSocket, buf, len, 0);
+			}
 
             // if message is shutdown
             else if (strcmp(buf, "shutdown\n") == 0)
