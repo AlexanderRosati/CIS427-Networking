@@ -472,10 +472,11 @@ void* ChildThread(void *newfd)
 					for (itr2 = client_ips.begin(); itr2 != client_ips.end(); itr2++) 
 					{
 						temp = temp + itr1->second + "      " + itr2->second + "\n";
-						
+						break;
 						//cout << temp;
 						
 					}
+					
 				}
 				
 
