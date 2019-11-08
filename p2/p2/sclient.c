@@ -145,6 +145,8 @@ int main(int argc, char * argv[]) {
                     msg_store = true;
                 }
 
+				
+
                 //send user's message to the server
                 send(s, buf, len, 0);
             } 

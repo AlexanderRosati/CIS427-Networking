@@ -184,6 +184,17 @@ void* ChildThread(void *newfd)
 					}
 				}*/
 
+				// iterate through all clients except one that sent shutdown
+				/*for (int i = 0; i < fdmax + 1; ++i)
+				{
+					if (FD_ISSET(i, &master))
+					{
+						send(i, buf, len, 0);
+					}
+				}*/
+
+				
+
 				//double for loop for iterators
 
 				string new_msg = "200 OK you have a new message from";
@@ -191,18 +202,42 @@ void* ChildThread(void *newfd)
 
 				for (itrSender_Socket = client_ids.begin(); itrSender_Socket != client_ids.end(); itrSender_Socket++)
 				{
-					if (OriginalSenderSocket == itrSender_Socket->first) 
-					{
+					//if (OriginalSenderSocket == itrSender_Socket->first) 
+					//{
 
 						for (itrReciever_Socket = client_ids.begin(); itrReciever_Socket != client_ids.end(); itrReciever_Socket++)
 						{
 							if (UserID == itrReciever_Socket->second)
 							{
-								new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
-								recsock = itrReciever_Socket->first;
+								//new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
+								//recsock = itrReciever_Socket->first;
+								for (j = 0; j < fdmax + 1; j++)
+								{
+									if (FD_ISSET(j, &master))
+									{
+										if (j == OriginalSenderSocket)
+										{
+											strcpy(buf, "200 OK");
+
+											// get message len
+											len = strlen(buf) + 1;
+
+											//send message to client
+											send(j, buf, len, 0);
+										}
+										if (j == itrReciever_Socket->first) 
+										{
+											new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
+											recsock = itrReciever_Socket->first;
+										}
+									}
+								}
+
+								//break;
 							}
 						}
-					}
+					//}
+				
 				}
 				strcpy(buf, new_msg.c_str());
 
@@ -210,7 +245,7 @@ void* ChildThread(void *newfd)
 				len = strlen(buf) + 1;
 
 				//send message to client
-				send(itrReciever_Socket->first, buf, len, 0);
+				send(recsock, buf, len, 0);
 				send_msg = false;
 
 			}
