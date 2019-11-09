@@ -18,10 +18,11 @@
 #include <fstream>
 #include <map>
 #include <iterator>
+#include <iomanip>
 
 using namespace std;
 
-#define PORT 8971 
+#define PORT 22403
 #define MAX_LINE 256
 #define MAX_NUM_MESSAGES 10
 
@@ -68,11 +69,9 @@ void* ChildThread(void *newfd)
     int len = 0;
     bool msg_store = false;
     int user_pos = -1;
-	bool send_msg = false;
-	string UserID;
-	int OriginalSenderSocket = 0;
+    bool send_msg = false;
+    int recv_soc = -1;
 	
-
     while(1) 
     {
         // handle data from a client
@@ -160,95 +159,38 @@ void* ChildThread(void *newfd)
                 msg_store = false;
             }
 
-			else if (send_msg) 
-			{
-				//holds message 
-				string tempbuf(buf);
-				int recsock = -1;
-				// OriginalSenderSocket Sender Client Given:: int
-				map<int, string>::iterator itrSender_Socket;
-				// Receiving Client :: Given:: string
-				map<int, string>::iterator itrReciever_Socket;
-				
-				/*for (j = 0; j = < fdmax; j++) 
-				{ // send to everyone
-					if (FD_ISSET(j, &master)) 
-					{ // except the listener and ourselves
-						if (j != listener && j != childSocket)
-						{
-							if (send(j, buf, nybtes, 0) == -1) 
-							{
-								perror("send");
-							}
-						}
-					}
-				}*/
+            //if we are relaying a message to a client
+            else if (send_msg) 
+            {
+                //convert message we are realying into string
+                string converted_buf(buf);
 
-				// iterate through all clients except one that sent shutdown
-				/*for (int i = 0; i < fdmax + 1; ++i)
-				{
-					if (FD_ISSET(i, &master))
-					{
-						send(i, buf, len, 0);
-					}
-				}*/
+                //create message to send to recipient
+                string relayed_message = "200 OK you have a new message from " + client_ids[childSocket];
+                relayed_message += "\n" + client_ids[childSocket] + ": " + converted_buf;
 
-				
+                //put message in buf
+                strcpy(buf, relayed_message.c_str());
 
-				//double for loop for iterators
+                //get message length
+                len = strlen(buf) + 1;
 
-				string new_msg = "200 OK you have a new message from";
-				
+                //send message to recipient
+                send(recv_soc, buf, len, 0);
 
-				for (itrSender_Socket = client_ids.begin(); itrSender_Socket != client_ids.end(); itrSender_Socket++)
-				{
-					//if (OriginalSenderSocket == itrSender_Socket->first) 
-					//{
+                //create message for sender
+                strcpy(buf, "200 OK\n");
 
-						for (itrReciever_Socket = client_ids.begin(); itrReciever_Socket != client_ids.end(); itrReciever_Socket++)
-						{
-							if (UserID == itrReciever_Socket->second)
-							{
-								//new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
-								//recsock = itrReciever_Socket->first;
-								for (j = 0; j < fdmax + 1; j++)
-								{
-									if (FD_ISSET(j, &master))
-									{
-										if (j == OriginalSenderSocket)
-										{
-											strcpy(buf, "200 OK");
+                //get message length
+                len = strlen(buf) + 1;
 
-											// get message len
-											len = strlen(buf) + 1;
+                //send message to sender
+                send(childSocket, buf, len, 0);
 
-											//send message to client
-											send(j, buf, len, 0);
-										}
-										if (j == itrReciever_Socket->first) 
-										{
-											new_msg = new_msg + itrSender_Socket->second + "\n" + itrSender_Socket->second + ": " + tempbuf + "\n";
-											recsock = itrReciever_Socket->first;
-										}
-									}
-								}
-
-								//break;
-							}
-						}
-					//}
-				
-				}
-				strcpy(buf, new_msg.c_str());
-
-				// get message len
-				len = strlen(buf) + 1;
-
-				//send message to client
-				send(recsock, buf, len, 0);
-				send_msg = false;
-
-			}
+                //reset various important variables
+                send_msg = false;
+                recv_soc = -1;
+            }
 
             //if message is a msgget
             else if (strcmp(buf, "msgget\n") == 0)
@@ -311,7 +253,7 @@ void* ChildThread(void *newfd)
             else if (strcmp(buf, "msgstore\n") == 0)
             {
                 // if user is NOT Logged in
-				if (user_pos == -1) 
+                if (user_pos == -1) 
                 {
                     // create error message
                     strcpy(buf, "401 You are not currently logged in, login first.\n");
@@ -494,35 +436,29 @@ void* ChildThread(void *newfd)
             }
 
             // if message is who
-			else if (strcmp(buf, "who\n") == 0)
-			{
-				//initialize map and vars
-				string temp = "200 OK \n The list of the active users: \n";
-				map<int,string>::iterator itr1;
-				map<int,string>::iterator itr2;
+            else if (strcmp(buf, "who\n") == 0)
+            {
+                //initialize map and vars
+                string message = "200 OK \nThe list of the active users: \n";
 
-				//double for loop for iterators
-				for (itr1 = client_ids.begin(); itr1 != client_ids.end(); itr1++)
-				{ 
-					for (itr2 = client_ips.begin(); itr2 != client_ips.end(); itr2++) 
-					{
-						temp = temp + itr1->second + "      " + itr2->second + "\n";
-						break;
-						//cout << temp;
-						
-					}
-					
-				}
-				
+                //string that contains 13 spaces
+                string filler = "             ";
 
-				// c.str turns string into character array
-				strcpy(buf, temp.c_str());
+                //double for loop for iterators
+                for (int i = 0; i < fdmax + 1; ++i)
+                {
+                    if (FD_ISSET(i, &master) && i != listener)
+                    {
+                        message += filler.replace(0, client_ids[i].size(), client_ids[i]) + client_ips[i] + "\n";       
+                        filler = "             ";
+                    }
+                }
 
-				len = strlen(buf) + 1;
-
-				send(childSocket, buf, len, 0);
-
-			}
+                // c.str turns string into character array
+                strcpy(buf, message.c_str());
+                len = strlen(buf) + 1;
+                send(childSocket, buf, len, 0);
+            }
 
             // if message is shutdown
             else if (strcmp(buf, "shutdown\n") == 0)
@@ -597,67 +533,96 @@ void* ChildThread(void *newfd)
             // if message is send
             else if (first_word == "send" && num_spaces == 1)
             {
+                //vars
+                string converted_buf(buf);
+                int pos_first_space = 0;
+                bool invalid_user_name  = true;
+                map<int, string>::iterator itr;
+                string given_user_name;
 
-			//vars
-			string converted_buf(buf);
-			//listener
-			OriginalSenderSocket = childSocket;
-			int pos_first_space = 0;
-			bool user_name_found = false;
-			bool user_active = false;
+                //if user is logged in
+                if(user_pos == -1)
+                {
+                    //create message to send to user
+                    strcpy(buf, "401 You are not currently logged in, login first.\n");
 
-			pos_first_space = converted_buf.find(' ');
+                    //get length of message
+                    len = strlen(buf) + 1;
 
-			// get UserID
-			UserID = converted_buf.substr(
-				pos_first_space + 1,
-				converted_buf.size() - pos_first_space - 1);
+                    //send message to thread's client
+                    send(childSocket, buf, len, 0);
 
-			for (int i = 0; i < 10; ++i)
-			{
-				if (user_names[i] == UserID)
-				{
-					user_name_found = true;
-					user_pos = i;
-					break;
-				}
-				else if (client_ids[i] == UserID) 
-				{
-					user_active = true;
-					user_pos = i;
-					break;
-				}
-			}
-			// if user name is not valid 
-			if (!user_name_found || !user_active) 
-			{
-				// create message 
-				strcpy(buf, "420 either the user does not exist or is not logged in\n");
+                    continue;
+                }
 
-				// get message len 
-				len = strlen(buf) + 1;
+                //get position of first space
+                pos_first_space = converted_buf.find(' ');
 
-				// send message to client 
-				send(childSocket, buf, len, 0);
+                //get user id
+                given_user_name = converted_buf.substr(
+	                                                pos_first_space + 1,
+				                        converted_buf.size() - pos_first_space - 2);
+                
+                //if client is trying to send to anonymous
+                if(given_user_name == "anonymous")
+                {
+                    //create message to send to user
+                    strcpy(buf, "499 Sending to anonymous is not allowed\n");
 
-				continue;
-			}
-			else 
-			{
-				strcpy(buf, "200 OK");
+                    //get length of message
+                    len = strlen(buf) + 1;
 
-				// get message len 
-				len = strlen(buf) + 1;
+                    //send message to thread's client
+                    send(childSocket, buf, len, 0);
 
-				// send message to client 
-				send(childSocket, buf, len, 0);
+                    continue;
+                }
 
-				send_msg = true;
-				//cout.flush();
-				
-				continue;
-			}
+                //make sure user id is valid
+                itr = client_ids.begin();
 
+                while(itr != client_ids.end())
+                {
+                    if(itr->second == given_user_name)
+                    {
+                        invalid_user_name = false;
+                        recv_soc = itr->first;
+                        break;
+                    }
+
+                    //increment itr
+                    ++itr;
+                }
+
+                // if user id is not valid 
+                if (invalid_user_name) 
+                {
+                    // create message 
+                    strcpy(buf, "420 either the user does not exist or is not logged in\n");
+
+                    // get message len 
+                    len = strlen(buf) + 1;
+
+                    // send message to client 
+                    send(childSocket, buf, len, 0);
+
+                    continue;
+                }
+                
+                else 
+                {
+                    //create message
+                    strcpy(buf, "200 OK\n");
+
+                    // get message len 
+                    len = strlen(buf) + 1;
+
+                    // send message to client 
+                    send(childSocket, buf, len, 0);
+
+                    //prepate to realy message to recipient
+                    send_msg = true;
+                }
             }
 
             // if we get invalid input

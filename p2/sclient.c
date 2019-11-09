@@ -14,10 +14,11 @@
 #include <netdb.h>
 #include <cstring>
 #include <cstdlib>
+#include <climits>
 
 using namespace std;
 
-#define SERVER_PORT 8971
+#define SERVER_PORT 22403
 #define MAX_LINE 256
 #define STDIN 0
 
@@ -42,7 +43,8 @@ int main(int argc, char * argv[]) {
     int s;
 
     bool quitting = false;
-    bool msg_store = false;
+    bool dont_lowercase = false;
+    bool sending = false;
     bool skip_quit = false;
 
     // clear the master and temp sets
@@ -117,16 +119,20 @@ int main(int argc, char * argv[]) {
                 len = strlen(buf) + 1;
                 
                 //lower case all characters in buf
-                if (!msg_store)
+                if (!dont_lowercase)
                 {
                     to_lower_buf(buf, strlen(buf));
                 }
 
                 else
                 {
-                    msg_store = false;
+                    dont_lowercase = false;
                     skip_quit = true;
                 }
+
+                //see if message is send command
+                string converted_buf(buf);
+                converted_buf = converted_buf.substr(0, 4);
 
                 //test to see if quitting
                 if ((strcmp(buf, "quit\n") == 0) && !skip_quit)
@@ -140,12 +146,10 @@ int main(int argc, char * argv[]) {
                 }
 
                 // if message is msgstore
-                if (strcmp(buf, "msgstore\n") == 0)
+                if (strcmp(buf, "msgstore\n") == 0 || converted_buf == "send")
                 {
-                    msg_store = true;
+                    dont_lowercase  = true;
                 }
-
-				
 
                 //send user's message to the server
                 send(s, buf, len, 0);
@@ -182,7 +186,26 @@ int main(int argc, char * argv[]) {
                 // fall out of while loop
                 break;
             }
+
+            //dont lowercase next input from client
+            else if(message_code == "401" ||
+                    message_code == "499" ||
+                    message_code == "420" ||
+                    message_code == "403" ||
+                    message_code == "300")
+            {
+                dont_lowercase = false;
+            }
             
+            //print an extra '\n' if it is a message from another client
+            string converted_buf(buf);
+            converted_buf = converted_buf.substr(0, 34);
+
+            if(converted_buf == "200 OK you have a new message from")
+            {
+                cout << endl;
+            }
+
             // display what the server sent
             cout << "s: " << buf;
             
@@ -193,11 +216,11 @@ int main(int argc, char * argv[]) {
                 cout << "c: ";
             }
 
-            // manually flush buffer
+            // manually flush output buffer
             cout.flush();
         }    
     }
 
     close(s);
-	return 0;
+    return 0;
 }
